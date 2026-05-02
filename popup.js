@@ -2,7 +2,6 @@ const els = {
   loading: document.getElementById("loadingView"),
   login: document.getElementById("loginView"),
   app: document.getElementById("appView"),
-  loginBtn: document.getElementById("loginBtn"),
   loginStatus: document.getElementById("loginStatus"),
   logoutBtn: document.getElementById("logoutBtn"),
   analyzeBtn: document.getElementById("analyzeBtn"),
@@ -11,12 +10,10 @@ const els = {
   userAvatar: document.getElementById("userAvatar"),
   userName: document.getElementById("userName"),
   userEmail: document.getElementById("userEmail"),
-  redirectUriBox: document.getElementById("redirectUriBox"),
-  googleClientIdInput: document.getElementById("googleClientIdInput"),
-  saveClientIdBtn: document.getElementById("saveClientIdBtn"),
-  clearClientIdBtn: document.getElementById("clearClientIdBtn"),
-  clientIdHint: document.getElementById("clientIdHint"),
-  clientIdSaveStatus: document.getElementById("clientIdSaveStatus"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  emailLoginBtn: document.getElementById("emailLoginBtn"),
+  emailSignupBtn: document.getElementById("emailSignupBtn"),
 };
 
 function show(view) {
@@ -34,27 +31,6 @@ function setLoginStatus(text, isError = false) {
 function setStatus(text, isError = false) {
   els.status.textContent = text || "";
   els.status.classList.toggle("error", isError);
-}
-
-function setClientIdSaveStatus(text, isError = false) {
-  if (!els.clientIdSaveStatus) return;
-  els.clientIdSaveStatus.textContent = text || "";
-  els.clientIdSaveStatus.classList.toggle("error", isError);
-}
-
-function applyGoogleClientIdSettings(resp) {
-  if (!resp?.ok || !els.googleClientIdInput || !els.clientIdHint) return;
-  els.googleClientIdInput.value = resp.override || "";
-  if (resp.hasOverride) {
-    els.clientIdHint.textContent =
-      "Em uso: valor salvo no armazenamento local da extensao (chrome.storage.local).";
-  } else if (resp.defaultId) {
-    els.clientIdHint.textContent =
-      "Em uso: padrao de config.js. Digite acima e clique em Salvar para usar o seu Client ID neste perfil.";
-  } else {
-    els.clientIdHint.textContent =
-      "Nao ha padrao em config.js; informe e salve um Client ID OAuth (Web) para poder entrar.";
-  }
 }
 
 async function sendBg(msg) {
@@ -95,7 +71,7 @@ function renderResult(payload, response) {
   const categoriesHtml = (r.categories || []).length
     ? `<div style="margin-top:8px">
          <span style="font-size:11px; color:#6b7280">Categorias:</span><br/>
-         ${r.categories.map(c => `<span class="badge tag">${escapeHtml(c)}</span>`).join("")}
+         ${r.categories.map((c) => `<span class="badge tag">${escapeHtml(c)}</span>`).join("")}
        </div>`
     : "";
 
@@ -103,7 +79,7 @@ function renderResult(payload, response) {
     ? `<div style="margin-top:10px">
          <strong style="font-size:12px">Por que:</strong>
          <ul class="explanations">
-           ${r.explanations.map(e => `<li>${escapeHtml(e)}</li>`).join("")}
+           ${r.explanations.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}
          </ul>
        </div>`
     : "";
@@ -171,17 +147,7 @@ async function sendMsgToContent(tabId, msg) {
 
 async function bootstrap() {
   show(els.loading);
-  const [sessionResp, redirectResp, clientIdResp] = await Promise.all([
-    sendBg({ type: "AUTH_GET_SESSION" }),
-    sendBg({ type: "AUTH_GET_REDIRECT_URI" }),
-    sendBg({ type: "AUTH_GET_GOOGLE_CLIENT_ID_SETTINGS" }),
-  ]);
-
-  if (els.redirectUriBox && redirectResp?.ok) {
-    els.redirectUriBox.textContent = redirectResp.redirectUri;
-  }
-
-  applyGoogleClientIdSettings(clientIdResp);
+  const sessionResp = await sendBg({ type: "AUTH_GET_SESSION" });
 
   if (sessionResp?.ok && sessionResp.session) {
     renderUser(sessionResp.session);
@@ -191,45 +157,76 @@ async function bootstrap() {
   }
 }
 
-els.saveClientIdBtn?.addEventListener("click", async () => {
-  const raw = els.googleClientIdInput?.value ?? "";
-  setClientIdSaveStatus("Salvando...");
-  const resp = await sendBg({ type: "AUTH_SAVE_GOOGLE_CLIENT_ID", clientId: raw.trim() });
-  if (!resp?.ok) {
-    setClientIdSaveStatus(resp?.error || "Falha ao salvar", true);
+function readEmailPassword() {
+  const email = (els.authEmail?.value ?? "").trim();
+  const password = els.authPassword?.value ?? "";
+  return { email, password };
+}
+
+function setEmailAuthBusy(busy) {
+  if (els.emailLoginBtn) els.emailLoginBtn.disabled = busy;
+  if (els.emailSignupBtn) els.emailSignupBtn.disabled = busy;
+}
+
+els.emailLoginBtn?.addEventListener("click", async () => {
+  const { email, password } = readEmailPassword();
+  if (!email || !password) {
+    setLoginStatus("Preencha e-mail e senha.", true);
     return;
   }
-  const again = await sendBg({ type: "AUTH_GET_GOOGLE_CLIENT_ID_SETTINGS" });
-  applyGoogleClientIdSettings(again);
-  setClientIdSaveStatus("Salvo neste navegador.");
-});
-
-els.clearClientIdBtn?.addEventListener("click", async () => {
-  if (els.googleClientIdInput) els.googleClientIdInput.value = "";
-  setClientIdSaveStatus("Removendo...");
-  const resp = await sendBg({ type: "AUTH_SAVE_GOOGLE_CLIENT_ID", clientId: "" });
-  if (!resp?.ok) {
-    setClientIdSaveStatus(resp?.error || "Falha ao limpar", true);
-    return;
-  }
-  const again = await sendBg({ type: "AUTH_GET_GOOGLE_CLIENT_ID_SETTINGS" });
-  applyGoogleClientIdSettings(again);
-  setClientIdSaveStatus("Usando novamente o padrao de config.js (se existir).");
-});
-
-els.loginBtn.addEventListener("click", async () => {
-  setLoginStatus("Abrindo Google...");
-  els.loginBtn.disabled = true;
+  setLoginStatus("Entrando...");
+  setEmailAuthBusy(true);
   try {
-    const resp = await sendBg({ type: "AUTH_SIGN_IN" });
+    const resp = await sendBg({
+      type: "AUTH_SIGN_IN_EMAIL",
+      payload: { email, password },
+    });
     if (!resp?.ok) throw new Error(resp?.error || "Falha no login");
     renderUser(resp.session);
     setLoginStatus("");
+    if (els.authPassword) els.authPassword.value = "";
     show(els.app);
   } catch (e) {
     setLoginStatus(`Erro: ${e.message || e}`, true);
   } finally {
-    els.loginBtn.disabled = false;
+    setEmailAuthBusy(false);
+  }
+});
+
+els.emailSignupBtn?.addEventListener("click", async () => {
+  const { email, password } = readEmailPassword();
+  if (!email || !password) {
+    setLoginStatus("Preencha e-mail e senha para criar a conta.", true);
+    return;
+  }
+  if (password.length < 6) {
+    setLoginStatus("A senha deve ter pelo menos 6 caracteres.", true);
+    return;
+  }
+  setLoginStatus("Criando conta...");
+  setEmailAuthBusy(true);
+  try {
+    const resp = await sendBg({
+      type: "AUTH_SIGN_UP_EMAIL",
+      payload: { email, password },
+    });
+    if (!resp?.ok) throw new Error(resp?.error || "Falha no cadastro");
+    if (resp.needsEmailConfirmation && !resp.session) {
+      setLoginStatus(resp.message || "Verifique seu e-mail para confirmar a conta.", false);
+      return;
+    }
+    if (resp.session) {
+      renderUser(resp.session);
+      setLoginStatus("");
+      if (els.authPassword) els.authPassword.value = "";
+      show(els.app);
+      return;
+    }
+    setLoginStatus("Conta criada. Agora use Entrar.", false);
+  } catch (e) {
+    setLoginStatus(`Erro: ${e.message || e}`, true);
+  } finally {
+    setEmailAuthBusy(false);
   }
 });
 
@@ -253,9 +250,11 @@ els.analyzeBtn.addEventListener("click", async () => {
 
     const ids = await sendMsgToContent(tab.id, { type: "REQUEST_MESSAGE_ID" });
     const { messageId, threadId } = ids || {};
-    if (!messageId && !threadId) throw new Error("Nao encontrei messageId/threadId. Abra o e-mail (nao so a lista).");
+    if (!messageId && !threadId) {
+      throw new Error("Nao encontrei messageId/threadId. Abra o e-mail (nao so a lista).");
+    }
 
-    setStatus("Analisando com a Analyze API...");
+    setStatus("Pedindo acesso ao Gmail (se for a primeira vez, aceite na janela do Chrome)...");
     const resp = await sendBg({
       type: "ANALYZE_CURRENT_MESSAGE",
       payload: { messageId, threadId },
@@ -266,9 +265,11 @@ els.analyzeBtn.addEventListener("click", async () => {
         setLoginStatus("Sessao expirada, entre novamente.", true);
         return;
       }
-      if (resp?.error === "google_reauth_required") {
-        show(els.login);
-        setLoginStatus("Permissao do Gmail expirou. Entre novamente para renovar.", true);
+      if (resp?.error === "gmail_oauth_failed") {
+        setStatus(
+          `Nao foi possivel autorizar o Gmail: ${resp.detail || "verifique o Client ID (Chrome Extension) e o ID da extensao no Google Cloud."}`,
+          true
+        );
         return;
       }
       throw new Error(resp?.error || "Falha na analise");
