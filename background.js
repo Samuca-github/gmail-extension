@@ -289,6 +289,61 @@ function buildAnalyzePayloadFromFullMessage(msgFull, threadId) {
   };
 }
 
+function normalizeScanLabel(lb) {
+  const m = {
+    suspicious: "suspeito",
+    suspeito: "suspeito",
+    benign: "legitimo",
+    legitimo: "legitimo",
+    phishing: "phishing",
+  };
+  return m[lb] || (lb && String(lb)) || "other";
+}
+
+function summarizeScans(rows) {
+  const byLabel = { phishing: 0, suspeito: 0, legitimo: 0, other: 0 };
+  const bySource = {};
+  let disagreementCount = 0;
+  for (const row of rows) {
+    const lb = normalizeScanLabel(row.label);
+    if (lb && lb in byLabel) byLabel[lb]++;
+    else byLabel.other++;
+    if (row.disagreement) disagreementCount++;
+    const rawSrc = row.analyzed_by || row.source || "desconhecido";
+    const src = rawSrc === "fallback" ? "reserva" : rawSrc === "gpt" ? "gpt" : String(rawSrc);
+    bySource[src] = (bySource[src] || 0) + 1;
+  }
+  return {
+    total: rows.length,
+    byLabel,
+    disagreementCount,
+    bySource,
+  };
+}
+
+async function fetchUserScansFromSupabase(accessToken) {
+  const base = CONFIG.SUPABASE_URL.replace(/\/$/, "");
+  const fields =
+    "id,label,score,confidence,subject,from_address,created_at,analyzed_by,disagreement,source,gmail_message_id";
+  const url = `${base}/rest/v1/scans?select=${encodeURIComponent(fields)}&order=created_at.desc&limit=200`;
+  const r = await fetch(url, {
+    headers: {
+      apikey: CONFIG.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (r.status === 401) {
+    const err = new Error("not_authenticated");
+    err.status = 401;
+    throw err;
+  }
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    throw new Error(`Supabase scans: ${r.status} ${t}`);
+  }
+  return r.json();
+}
+
 async function callAnalyzeApi(payload) {
   const session = await ensureValidSession();
   if (!session) throw new Error("Nao autenticado");
@@ -363,6 +418,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "AUTH_SIGN_OUT": {
           await signOutFlow();
           sendResponse({ ok: true });
+          return;
+        }
+        case "METRICS_FETCH": {
+          const session = await ensureValidSession();
+          if (!session?.access_token) {
+            sendResponse({ ok: false, error: "not_authenticated" });
+            return;
+          }
+          const scans = await fetchUserScansFromSupabase(session.access_token);
+          const summary = summarizeScans(Array.isArray(scans) ? scans : []);
+          sendResponse({ ok: true, scans, summary });
           return;
         }
         case "ANALYZE_CURRENT_MESSAGE": {

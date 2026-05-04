@@ -75,8 +75,10 @@
         text-transform: uppercase;
       }
       .badge.phishing { background: #fee2e2; color: #991b1b; }
-      .badge.suspicious { background: #fef3c7; color: #92400e; }
-      .badge.benign { background: #dcfce7; color: #166534; }
+      .badge.suspicious,
+      .badge.suspeito { background: #fef3c7; color: #92400e; }
+      .badge.benign,
+      .badge.legitimo { background: #dcfce7; color: #166534; }
       .badge.tag {
         background: #eef2ff; color: #3730a3;
         font-weight: 500; text-transform: none;
@@ -133,6 +135,69 @@
       .auth-email .row { display: flex; gap: 8px; margin-top: 4px; }
       .auth-email .row button { flex: 1; padding: 9px 8px; font-size: 12px; }
       .auth-hint { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.45; text-align: left; }
+
+      .metrics-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .metric-box {
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 12px;
+      }
+      .metric-box .v { font-size: 18px; font-weight: 700; margin-top: 4px; }
+      .metric-box .k { color: var(--muted); font-size: 11px; }
+      .metrics-sources { margin-top: 12px; font-size: 11px; color: #4b5563; }
+      .metrics-sources ul { margin: 6px 0 0 18px; padding: 0; }
+      .metrics-table-wrap {
+        max-height: 220px;
+        overflow-x: auto;
+        overflow-y: auto;
+        margin-top: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .metrics-table {
+        table-layout: fixed;
+        width: 100%;
+        min-width: 460px;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      .metrics-table th,
+      .metrics-table td {
+        border-bottom: 1px solid var(--border);
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .metrics-table th {
+        position: sticky;
+        top: 0;
+        background: #f9fafb;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .metrics-table tr:last-child td { border-bottom: none; }
+      .metrics-table .col-date { width: 6rem; white-space: nowrap; }
+      .metrics-table .col-label { width: 14rem; }
+      .metrics-table .col-score { width: 9rem; white-space: nowrap; }
+      .metrics-table .col-subj {
+        width: 42rem;
+        word-break: normal;
+        overflow-wrap: break-word;
+        line-height: 1.35;
+      }
+      .metrics-table .col-from {
+        width: 18rem;
+        word-break: break-all;
+        line-height: 1.35;
+      }
     </style>
   </head>
   <body>
@@ -168,9 +233,27 @@
           </div>
         </div>
 
+        <button type="button" id="openMetricsBtn" class="btn-secondary" style="width:100%; margin-bottom:10px">
+          Ver metricas (Supabase)
+        </button>
         <button id="analyzeBtn" class="btn-primary">Analisar e-mail aberto</button>
         <div id="status" class="status"></div>
         <div id="out"></div>
+      </section>
+
+      <section id="metricsView" class="hidden">
+        <button type="button" id="metricsBackBtn" class="btn-secondary" style="width:100%; margin-bottom:10px">
+          Voltar
+        </button>
+        <p style="margin:0 0 8px; font-size:12px; color:var(--muted)">
+          Historico das suas analises salvas (ate 200 ultimas linhas).
+        </p>
+        <div id="metricsSummary"></div>
+        <div id="metricsTableWrap" class="metrics-table-wrap"></div>
+        <div id="metricsStatus" class="status"></div>
+        <button type="button" id="metricsRefreshBtn" class="btn-secondary" style="width:100%; margin-top:10px">
+          Atualizar
+        </button>
       </section>
 
       <section id="loadingView">
