@@ -1,18 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Phishing Scanner (Gmail)",
-  "version": "0.2.0",
-  "description": "Login com Google via Supabase, le headers SPF/DMARC/DKIM da Gmail API e envia para a Analyze API.",
+  "version": "0.3.0",
+  "description": "Login e-mail/senha, Gmail API via OAuth da extensao (chrome.identity).",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "oauth2": {
+    "client_id": "<CLIENT-ID-OAUTH>",
+    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+  },
   "permissions": ["identity", "storage", "scripting", "activeTab"],
   "host_permissions": [
     "https://www.googleapis.com/*",
-    "https://accounts.google.com/*",
-    "https://oauth2.googleapis.com/*",
     "https://fmpsqygpdujikcqsuvke.supabase.co/*",
     "https://mail.google.com/*",
     "http://localhost/*",

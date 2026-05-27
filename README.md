@@ -1,26 +1,22 @@
-1. Criar OAuth no Google Cloud
+## Phishing Scanner (Gmail)
 
-    Ative Gmail API
-    https://console.cloud.google.com/auth/branding?hl=pt-br
+### Autenticacao
 
-    Configure a OAuth consent screen (adicionar “User type: External” e seus e-mails de teste)
+1. **Supabase (e-mail + senha)** — login da Analyze API; ative o provider **Email** no projeto.
+2. **Gmail API** — separado: usa `chrome.identity.getAuthToken` com **OAuth Client ID tipo Chrome Extension** no `manifest.json` (`oauth2.client_id`).
 
-    Crie OAuth Client ID e copie o client_id
+O Client ID no Google Cloud deve listar o **ID da extensao** correto:
 
-    Coloque no manifest.json em oauth2.client_id
+- Extensao publicada na Chrome Web Store: use o ID da loja (ex.: o que voce cadastrou no console).
+- Desenvolvimento **Load unpacked**: o ID e outro (veja em `chrome://extensions` → Detalhes). Nesse caso crie/edite o cliente OAuth com **esse** ID ou use um `.pem` fixo para manter o mesmo ID entre cargas.
 
-2. Carregar a extensão
+### Gmail API no Google Cloud
 
-    Chrome → chrome://extensions
+- Ative a **Gmail API** no projeto.
+- Credenciais → **ID do cliente OAuth** → tipo **Extensao do Chrome** → cole o ID da extensao e o `client_id` gerado no `manifest.json` em `oauth2`.
 
-    Ative Developer mode
+### Uso
 
-    Load unpacked → selecione a pasta gmail-phishing-ext/
-
-3. Abrir o Gmail em uma aba, abrir um e-mail (visualizar mensagem).
-
-4. Clicar no ícone da extensão → “Analisar e-mail aberto”
-
-    O Chrome pedirá login/consent (primeira vez)
-
-    O popup mostra o veredito e os headers SPF/DMARC/DKIM usados.
+1. Carregue a extensao em `chrome://extensions`.
+2. Abra o Gmail, visualize um e-mail.
+3. Popup → entre com e-mail/senha → **Analisar e-mail aberto** (na primeira vez aceite o acesso ao Gmail).

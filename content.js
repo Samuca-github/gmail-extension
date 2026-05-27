@@ -44,7 +44,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "REQUEST_MESSAGE_ID") {
     const messageId = getMessageIdFromDom();
     const threadId = getThreadIdFromUrl();
-    console.log("[phishing-ext] REQUEST_MESSAGE_ID →", { messageId, threadId });
+    console.info("[phishing-ext] REQUEST_MESSAGE_ID →", { messageId, threadId });
     sendResponse({ messageId, threadId });
+    return true;
   }
+  return false;
 });
