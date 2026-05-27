@@ -9,7 +9,7 @@
     "128": "icons/icon128.png"
   },
   "oauth2": {
-    "client_id": "267045595006-lq9f6s277p1gupigvqvo6qelv5encbs4.apps.googleusercontent.com",
+    "client_id": "<CLIENT-ID-OAUTH>",
     "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
   },
   "permissions": ["identity", "storage", "scripting", "activeTab"],
